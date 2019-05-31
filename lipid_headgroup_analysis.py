@@ -83,12 +83,21 @@ def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
     HGcoords = []
     
     # plot the lipid headgroups write pdb and bild
+    cas = {}            #{atomno:[x,y,z]}
     for i in filedata:
         line= i.split()
         if len(i) > 25:
             if i[17:19] =='PV' and i[13] == 'P':
                 bildout.write('.color {0} \n.sphere {1} 1.0\n'.format(coldic[i[17:21]],i[31:56]))
                 HGcoords.append([float(x) for x in i[31:56].split()])
+            # get cAs for strands
+            if i[:4] == 'ATOM': 
+                chain = i[21]
+                atomtype = i[13:15]
+                atomno = int(i[23:26])
+                if chain == 'A' and atomtype == 'CA':
+                    cas[atomno] = (i[31:56].split())
+    # plot the lipids in bildfiles
     xs = [float(x[0]) for x in HGcoords]
     ys = [float(x[1]) for x in HGcoords]
     zs = [float(x[2]) for x in HGcoords]
@@ -98,9 +107,28 @@ def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
     bildout.write('.color blue \n.cylinder {0} {1} {2} {3} {4} {5} 0.5\n'.format(meanpoint[0],meanpoint[1],meanpoint[2],meanpoint[0],meanpoint[1]+20,meanpoint[2]))
     bildout.write('.color yellow  \n.cylinder {0} {1} {2} {3} {4} {5} 0.5\n'.format(meanpoint[0],meanpoint[1],meanpoint[2],meanpoint[0],meanpoint[1],meanpoint[2]+20))
     
-    
+    #write the cas to the 3d plotting file
+    strands = [range(25,801),range(439,447),range(455,463),range(467,475),range(484,495),range(505,519),range(524,537),range(564,578),range(591,601),range(608,620),range(628,641),range(710,720),range(738,746),range(766,779),range(781,790),range(800,810)]
+    strdic = {}             #{strandno:[[x,y,z],[x,y,z], ..., [x,y,z]]}
+    strcoords = {1:[],2:[],3:[],4:[],5:[],6:[],7:[],8:[],9:[],10:[],11:[],12:[],13:[],14:[],15:[],16:[]}
+    for atom in cas:
+        strandn = 1    
+        for strand in strands:
+            if atom in strand:
+                print(strandn,atom,cas[atom])
+                strcoords[strandn].append(cas[atom])
+            strandn+=1
+    print strcoords
+    # write the strand data to the 3d plot file
+    pltout = open('plotdata/{0}_plot.txt'.format(pdbfile.split('.')[0]),'w')
+    for i in strcoords:
+        pltout.write('\nstrand {0}\n'.format(i))
+        for j in strcoords[i]:
+            pltout.write('{0} '.format(','.join(j)))
 
+    
     # inital guess at the starting plane three points are true mean and true mean +20x +20y and true mean -20x and -20y
+    # this is only vaild for matt's aligned BAM ND structures with Bam roughly aligned with the zaxis perpendicular to the Nanodisc
     
     startingplane = plane_from_points(np.array([meanpoint[0]+20,meanpoint[1]+20,meanpoint[2]]),np.array([meanpoint[0]-20,meanpoint[1]-20,meanpoint[2]]),np.array(meanpoint))
 
@@ -139,6 +167,10 @@ def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
     txs = [float(x[0]) for x in top]
     tys = [float(x[1]) for x in top]
     tzs = [float(x[2]) for x in top]
+    
+    # write bottomdata for 3d plotting
+
+    
     meanpoint = [np.mean(txs),np.mean(tys),np.mean(tzs)]
     startingplane = plane_from_points(np.array(meanpoint),np.array(top[0]),np.array(top[1]))
     xyz = np.array([[x[0] for x in top],[x[1] for x in top],[x[2] for x in top]])
@@ -150,6 +182,7 @@ def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
     tbbild.write('.polygon {0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11}\n'.format(tpp1[0],tpp1[1],tpp1[2],tpp2[0],tpp2[1],tpp2[2],tpp3[0],tpp3[1],tpp3[2],tpp4[0],tpp4[1],tpp4[2]))
     
     # make plot for bottom leaflet originall labelled top:
+        
     pltxs,pltys,distances = [],[],[]
     for i in top:
         pltxs.append(i[0])
@@ -169,7 +202,8 @@ def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
     plt.scatter(pltxs,pltys,c=distances,cmap='coolwarm')
     plt.savefig('bottom/bottom_{0}.png'.format(pdbfile.split('.')[0]))
     plt.close()
-    
+    pltout.write('\nbottom\n{0}\n{1}\n{2}\n{3}'.format(' '.join([str(x) for x in txs]),' '.join([str(x) for x in tys]),' '.join([str(x) for x in tzs]),' '.join([str(x) for x in distances])))
+
 # fit a plane to the top leaflet originally labelled bottom:
     bxs = [float(x[0]) for x in bottom]
     bys = [float(x[1]) for x in bottom]
@@ -206,6 +240,8 @@ def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
 
     bildout.close()
     
+    # make a file to write data from 3D plotting
+    pltout.write('\ntop\n{0}\n{1}\n{2}\n{3}'.format(' '.join([str(x) for x in bxs]),' '.join([str(x) for x in bys]),' '.join([str(x) for x in bzs]),' '.join([str(x) for x in distances])))
 
 # make the necessary directories -- keep shit organised
 if os.path.isdir('top') == False:
@@ -216,6 +252,9 @@ if os.path.isdir('bottom') == False:
 
 if os.path.isdir('bildfiles') == False:
     subprocess.call(['mkdir','bildfiles'])
+
+if os.path.isdir('plotdata') == False:
+    subprocess.call(['mkdir','plotdata'])
 
 # get the x and y lims
 limxs = []
