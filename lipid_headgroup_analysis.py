@@ -117,7 +117,7 @@ def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
     #write the cas to the 3d plotting file
     
     ##### define the strands to draw here ################
-    strands = [[range(25,801),'A'],[range(100,200),'B']]
+    strands = [             [range(25,801),'A'],[range(233,350),'B'],[range(117,140),'D'],[range(22,115),'E']              ]
     ######################################################
     
     strdic = {}             #{strandno:[[x,y,z],[x,y,z], ..., [x,y,z]]}
