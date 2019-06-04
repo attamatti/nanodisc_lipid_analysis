@@ -44,8 +44,8 @@ mesh = mlab.pipeline.delaunay2d(pts)
 mesh2 = mlab.pipeline.delaunay2d(ptst)
 
 # Remove the point representation from the plot
-#pts.remove()
-#ptst.remove()
+pts.remove()
+ptst.remove()
 
 def plotstrand(stranddata):
     xs,ys,zs = [],[],[]
