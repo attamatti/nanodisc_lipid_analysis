@@ -8,22 +8,24 @@ data = open(sys.argv[1],'r').readlines()
 
 strands = {}
 n=1
+lc = 1
 for i in data[1:]:
     if i.split()[0] == 'strand':
         strands[int(i.split()[-1])]= data[n+1].split()[:-1]
+    	lc+=1
     n+=1
 
-
-X = np.array([float(x) for x in data[34].split()])
-Y = np.array([float(x) for x in data[35].split()])
-Z = np.array([float(x) for x in data[36].split()])
-d = np.array([float(x) for x in data[37].split()])
+print 
+X = np.array([float(x) for x in data[lc+3].split()])
+Y = np.array([float(x) for x in data[lc+4].split()])
+Z = np.array([float(x) for x in data[lc+5].split()])
+d = np.array([float(x) for x in data[lc+6].split()])
  
 
-Xt = np.array([float(x) for x in data[39].split()])
-Yt = np.array([float(x) for x in data[40].split()])
-Zt = np.array([float(x) for x in data[41].split()])
-dt = np.array([float(x) for x in data[42].split()])
+Xt = np.array([float(x) for x in data[lc+8].split()])
+Yt = np.array([float(x) for x in data[lc+9].split()])
+Zt = np.array([float(x) for x in data[lc+10].split()])
+dt = np.array([float(x) for x in data[lc+11].split()])
 
 
 # Define the points in 3D space
@@ -47,27 +49,34 @@ mesh2 = mlab.pipeline.delaunay2d(ptst)
 pts.remove()
 ptst.remove()
 
-def plotstrand(stranddata):
-    xs,ys,zs = [],[],[]
+def plotstrand(stranddata,col):
+    xs,ys,zs,c = [],[],[],[]
     for i in stranddata:
         j = i.split(',')
         xs.append(float(j[0]))
         ys.append(float(j[1]))
         zs.append(float(j[2]))
-    print(xs)
-    print(ys)
-    print(zs)
-    strand = mlab.plot3d(xs, ys, zs, tube_radius=0.25)
+	c.append(float(col))
+    #print(xs)
+    #print(ys)
+    #print(zs)
+    print(c)
+    c[0] = 0.0
+    c[-1] = 1.0
+    strand = mlab.plot3d(xs, ys, zs, c, colormap='Spectral',tube_radius=0.25)
 
+print strands
+print('##')
+coln = 1.0
 for i in strands:
-    print strands[i]
-    plotstrand(strands[i])
-
+    #print strands[i]
+    col = coln/len(strands)
+    plotstrand(strands[i],col)
+    coln+=1
 # Draw a surface based on the triangulation
 surf = mlab.pipeline.surface(mesh)
 surf2 = mlab.pipeline.surface(mesh2)
-for i in strands:
-    plotstrand(strands[i])
+
     
 # Simple plot.
 mlab.axes(x_axis_visibility=False,y_axis_visibility=False,z_axis_visibility=False)
