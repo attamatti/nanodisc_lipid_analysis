@@ -5,6 +5,7 @@
 # claculate and graph angles between leaflet planes
 
 #### fix lazy indexing on xyz coordinates!!!!!!!
+#### fix projection of spots on to leaflet plane rather than xy axis
 
 import sys
 import numpy as np
