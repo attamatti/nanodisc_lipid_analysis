@@ -8,24 +8,24 @@ data = open(sys.argv[1],'r').readlines()
 
 strands = {}
 n=1
-lc = 1
+lc = 0
 for i in data[1:]:
     if i.split()[0] == 'strand':
         strands[int(i.split()[-1])]= data[n+1].split()[:-1]
-    	lc+=1
+    	lc+=2
     n+=1
 
-print 
-X = np.array([float(x) for x in data[lc+3].split()])
-Y = np.array([float(x) for x in data[lc+4].split()])
-Z = np.array([float(x) for x in data[lc+5].split()])
-d = np.array([float(x) for x in data[lc+6].split()])
+print(lc)
+X = np.array([float(x) for x in data[lc+2].split()])
+Y = np.array([float(x) for x in data[lc+3].split()])
+Z = np.array([float(x) for x in data[lc+4].split()])
+d = np.array([float(x) for x in data[lc+5].split()])
  
 
-Xt = np.array([float(x) for x in data[lc+8].split()])
-Yt = np.array([float(x) for x in data[lc+9].split()])
-Zt = np.array([float(x) for x in data[lc+10].split()])
-dt = np.array([float(x) for x in data[lc+11].split()])
+Xt = np.array([float(x) for x in data[lc+7].split()])
+Yt = np.array([float(x) for x in data[lc+8].split()])
+Zt = np.array([float(x) for x in data[lc+9].split()])
+dt = np.array([float(x) for x in data[lc+10].split()])
 
 
 # Define the points in 3D space

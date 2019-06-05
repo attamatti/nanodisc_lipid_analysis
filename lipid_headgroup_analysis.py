@@ -14,6 +14,18 @@ import matplotlib.pyplot as plt
 import os
 import subprocess
 
+def intersect_line_plabe(PNV,plane,point):
+    '''PNV = [i,j,k], plane = [a,b,c,d], point = [x,y,z]
+        ix = x - i(Ax+By+Cz+D)/Ai+Bj+Ck
+        iy = y - j(Ax+By+Cz+D)/Ai+Bj+Ck'''
+    print(PNV)
+    print(plane)
+    print(point)
+    ix = point[0] - PNV[0]*(plane[0]*point[0]+plane[1]*point[1]+plane[2]*point[2]+plane[3])/plane[0]*PNV[0]+plane[1]*PNV[1]+plane[2]*PNV[2]
+    iy = point[1] - PNV[1]*(plane[0]*point[0]+plane[1]*point[1]+plane[2]*point[2]+plane[3])/plane[0]*PNV[0]+plane[1]*PNV[1]+plane[2]*PNV[2]
+    print(ix,iy)
+    return((ix,iy))
+    
 def distance_to_plane(planeeq,point):
     '''using abs(ax+by+cz+d)/sqrt(a^2+b^2+c^2)'''
     
@@ -79,7 +91,7 @@ def fit_plane(initial,XYZ):
     return([PNx,PNy,PNz],e1,e2,(a,b,c,d))
     
 # DO IT!
-def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
+def read_pdb_get_Ps(pdbfile):
     filedata = open(pdbfile,'r').readlines()
     bildout = open('bildfiles/HG_{0}.bild'.format(pdbfile.split('.')[0]),'w')
     coldic = {'PVPG':'red','PVCL':'yellow','PVPE':'blue'}
@@ -99,12 +111,10 @@ def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
                 atomtype = i[13:15]
                 atomno = int(i[23:26])
                 if atomtype == 'CA':
-		    try:
-		        cas[chain][atomno] = (i[31:56].split())
-		    except:
-		        cas[chain] = {atomno:(i[31:56].split())}
-		#if chain == 'A' and atomtype == 'CA':
-                 #   cas[atomno] = (i[31:56].split())
+                    try:
+                        cas[chain][atomno] = (i[31:56].split())
+                    except:
+                        cas[chain] = {atomno:(i[31:56].split())}
     # plot the lipids in bildfiles
     xs = [float(x[0]) for x in HGcoords]
     ys = [float(x[1]) for x in HGcoords]
@@ -118,7 +128,7 @@ def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
     #write the cas to the 3d plotting file
     
     ##### define the strands to draw here ################
-    strands = [             [range(25,801),'A'],[range(233,350),'B'],[range(117,140),'D'],[range(22,115),'E']              ]
+    strands = [             [range(1,171),'A']              ]
     ######################################################
     
     strdic = {}             #{strandno:[[x,y,z],[x,y,z], ..., [x,y,z]]}
@@ -129,10 +139,10 @@ def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
             for strand in strands:
                 if atom in strand[0] and chain == strand[1]:
                     print(strandn,atom,cas[chain][atom])
-		    try:
+                    try:
                     	strcoords[strandn].append(cas[chain][atom])
-		    except:
-		        strcoords[strandn] = [cas[chain][atom]]
+                    except:
+                        strcoords[strandn] = [cas[chain][atom]]
                 strandn+=1
     print strcoords
     # write the strand data to the 3d plot file
@@ -186,39 +196,37 @@ def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
     
     # write bottomdata for 3d plotting
 
-    
     meanpoint = [np.mean(txs),np.mean(tys),np.mean(tzs)]
     startingplane = plane_from_points(np.array(meanpoint),np.array(top[0]),np.array(top[1]))
     xyz = np.array([[x[0] for x in top],[x[1] for x in top],[x[2] for x in top]])
-    tPN,te1,te2,tabcde = fit_plane(startingplane,xyz)
+    tPN,te1,te2,tabcd = fit_plane(startingplane,xyz)
     tpp1 = [meanpoint[0]+te1[0],meanpoint[1]+te1[1],meanpoint[2]+te1[2]]
     tpp3 = [meanpoint[0]-te1[0],meanpoint[1]-te1[1],meanpoint[2]-te1[2]]
     tpp2 = [meanpoint[0]+te2[0],meanpoint[1]+te2[1],meanpoint[2]+te2[2]]
     tpp4 = [meanpoint[0]-te2[0],meanpoint[1]-te2[1],meanpoint[2]-te2[2]]
     tbbild.write('.polygon {0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11}\n'.format(tpp1[0],tpp1[1],tpp1[2],tpp2[0],tpp2[1],tpp2[2],tpp3[0],tpp3[1],tpp3[2],tpp4[0],tpp4[1],tpp4[2]))
     
-    # make plot for bottom leaflet originall labelled top:
+    # make plot for bottom leaflet originally labelled top:
+
         
-    pltxs,pltys,distances = [],[],[]
+    tpltxs,tpltys,tdistances = [],[],[]
+    # project points onto the plane and save for drawing
     for i in top:
-        pltxs.append(i[0])
-        pltys.append(i[1])
-        dist = distance_to_plane(tabcde,i)
+        projxy = intersect_line_plabe(tPN,tabcd,i)
+        tpltxs.append(projxy[0])
+        tpltys.append(projxy[1])
+        dist = distance_to_plane(tabcd,i)
         check = ((i[0]-tpp1[0])*tPN[0])+((i[1]-tpp1[1])*tPN[1])+((i[2]-tpp1[2])*tPN[2])
         if check >= 0:
-            distances.append(dist)
+            tdistances.append(dist)
         if check < 0:
-            distances.append(-dist)
-    distnormval = max([abs(x) for x in distances])
-    distances = [x/distnormval for x in distances]
-    #get values for plot 
-    plt.xlim(xmin,xmax)
-    plt.ylim(ymin,ymax)
-    plt.title('bottom_{0}'.format(pdbfile.split('.')[0]))
-    plt.scatter(pltxs,pltys,c=distances,cmap='coolwarm')
-    plt.savefig('bottom/bottom_{0}.png'.format(pdbfile.split('.')[0]))
-    plt.close()
-    pltout.write('\nbottom\n{0}\n{1}\n{2}\n{3}'.format(' '.join([str(x) for x in txs]),' '.join([str(x) for x in tys]),' '.join([str(x) for x in tzs]),' '.join([str(x) for x in distances])))
+            tdistances.append(-dist)
+    #normalize distance to 0-1 scale
+    distnormval = max([abs(x) for x in tdistances])
+    tdistances = [x/distnormval for x in tdistances]
+    
+    # get values for 3D plot 
+    pltout.write('\nbottom\n{0}\n{1}\n{2}\n{3}'.format(' '.join([str(x) for x in txs]),' '.join([str(x) for x in tys]),' '.join([str(x) for x in tzs]),' '.join([str(x) for x in tdistances])))
 
 # fit a plane to the top leaflet originally labelled bottom:
     bxs = [float(x[0]) for x in bottom]
@@ -227,7 +235,7 @@ def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
     meanpoint = [np.mean(bxs),np.mean(bys),np.mean(bzs)]
     startingplane = plane_from_points(np.array(meanpoint),np.array(bottom[0]),np.array(bottom[1]))
     xyz = np.array([[x[0] for x in bottom],[x[1] for x in bottom],[x[2] for x in bottom]])
-    bPN,be1,be2,babcde = fit_plane(startingplane,xyz)
+    bPN,be1,be2,babcd = fit_plane(startingplane,xyz)
     bpp1 = [meanpoint[0]+be1[0],meanpoint[1]+be1[1],meanpoint[2]+be1[2]]
     bpp3 = [meanpoint[0]-be1[0],meanpoint[1]-be1[1],meanpoint[2]-be1[2]]
     bpp2 = [meanpoint[0]+be2[0],meanpoint[1]+be2[1],meanpoint[2]+be2[2]]
@@ -235,29 +243,71 @@ def read_pdb_get_Ps(pdbfile,xmin,xmax,ymin,ymax):
     tbbild.write('.polygon {0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11}\n'.format(bpp1[0],bpp1[1],bpp1[2],bpp2[0],bpp2[1],bpp2[2],bpp3[0],bpp3[1],bpp3[2],bpp4[0],bpp4[1],bpp4[2]))
 
     # make plot for top leaflet originally labelled bottom:
-    pltxs,pltys,distances = [],[],[]
+    bpltxs,bpltys,bdistances = [],[],[]
     for i in bottom:
-        pltxs.append(i[0])
-        pltys.append(i[1])
-        dist = distance_to_plane(babcde,i)
+        projxy = intersect_line_plabe(bPN,babcd,i)
+        bpltxs.append(projxy[0])
+        bpltys.append(projxy[1])
+        dist = distance_to_plane(babcd,i)
         check = ((i[0]-bpp1[0])*bPN[0])+((i[1]-bpp1[1])*bPN[1])+((i[2]-bpp1[2])*bPN[2])
         if check >= 0:
-            distances.append(dist)
+            bdistances.append(dist)
         if check < 0:
-            distances.append(-dist)
-    distnormval = max([abs(x) for x in distances])
-    distances = [x/distnormval for x in distances]
-    plt.xlim(xmin,xmax)
-    plt.ylim(ymin,ymax)
+            bdistances.append(-dist)
+    distnormval = max([abs(x) for x in bdistances])
+    bdistances = [x/distnormval for x in bdistances]
+    
+    
+    # calculat the xy limits
+    tcent = (np.mean(tpltxs),np.mean(tpltys))
+    
+    txmin,txmax = min(tpltxs),max(tpltxs)
+    txrange = max([abs(tcent[0]-txmin),abs(tcent[0]-txmax)])
+    txrmin,txrmax = tcent[0]-txrange-20,tcent[0]+txrange+20
+    txr = txrmax - txrmin
+    
+    tymin,tymax = min(tpltys),max(tpltys)
+    tyrange = max([abs(tcent[1]-tymin),abs(tcent[1]-tymax)])
+    tyrmin,tyrmax = tcent[1]-tyrange-20,tcent[1]+tyrange+20
+    tyr =  tyrmax - tyrmin
+    
+    bcent = (np.mean(bpltxs),np.mean(bpltys))
+    
+    bxmin,bxmax = min(bpltxs),max(bpltxs)
+    bxrange = max([abs(bcent[0]-bxmin),abs(bcent[0]-bxmax)])
+    bxrmin,bxrmax = bcent[0]-bxrange-20,bcent[0]+bxrange+20
+    bxr = bxrmax - bxrmin
+    
+    bymin,bymax = min(bpltys),max(bpltys)
+    byrange = max([abs(bcent[1]-bymin),abs(bcent[1]-bymax)])
+    byrmin,byrmax = bcent[1]-byrange-20,bcent[1]+byrange+20
+    byr =  byrmax - byrmin  
+    
+    xr = 0.5*max([txr,bxr])
+    yr = 0.5*max([tyr,byr])
+        
+    # plot the top (called bottom)
+    plt.xlim(bcent[0]-xr,bcent[0]+xr)
+    plt.ylim(bcent[1]-yr,bcent[1]+yr)
     plt.title('top_{0}'.format(pdbfile.split('.')[0]))
-    plt.scatter(pltxs,pltys,c=distances,cmap='coolwarm')
+    plt.scatter(bpltxs,bpltys,c=bdistances,cmap='coolwarm')
     plt.savefig('top/top_{0}.png'.format(pdbfile.split('.')[0]))
+    plt.axis('off')
+    plt.close()
+    
+    # plot the bottom (called top - top and bottom are arbitrary anyway!)
+    plt.xlim(tcent[0]-xr,tcent[0]+xr)
+    plt.ylim(tcent[1]-yr,tcent[1]+yr)
+    plt.title('bottom_{0}'.format(pdbfile.split('.')[0]))
+    plt.scatter(tpltxs,tpltys,c=tdistances,cmap='coolwarm')
+    plt.savefig('bottom/bottom_{0}.png'.format(pdbfile.split('.')[0]))
+    plt.axis('off')
     plt.close()
 
     bildout.close()
     
     # make a file to write data from 3D plotting
-    pltout.write('\ntop\n{0}\n{1}\n{2}\n{3}'.format(' '.join([str(x) for x in bxs]),' '.join([str(x) for x in bys]),' '.join([str(x) for x in bzs]),' '.join([str(x) for x in distances])))
+    pltout.write('\ntop\n{0}\n{1}\n{2}\n{3}'.format(' '.join([str(x) for x in bxs]),' '.join([str(x) for x in bys]),' '.join([str(x) for x in bzs]),' '.join([str(x) for x in bdistances])))
 
 # make the necessary directories -- keep shit organised
 if os.path.isdir('top') == False:
@@ -272,20 +322,6 @@ if os.path.isdir('bildfiles') == False:
 if os.path.isdir('plotdata') == False:
     subprocess.call(['mkdir','plotdata'])
 
-# get the x and y lims
-limxs = []
-limys = []
-for i in sys.argv[1:]:
-    filedata = open(i,'r').readlines()
-    for i in filedata:
-        line= i.split()
-        if len(i) > 25:
-            if i[17:19] =='PV' and i[13] == 'P':
-                limxs.append(float(i[31:56].split()[0]))
-                limys.append(float(i[31:56].split()[1]))
-xmin,xmax = min(limxs)-20,max(limxs)+20
-ymin,ymax = min(limys)-20,max(limys)+20
-
 ### DO IT!!!
 for i in sys.argv[1:]:
-    read_pdb_get_Ps(i,xmin,xmax,ymin,ymax)
+    read_pdb_get_Ps(i)
