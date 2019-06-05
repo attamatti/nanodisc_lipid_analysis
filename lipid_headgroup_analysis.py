@@ -2,10 +2,7 @@
 
 # to do:
 # clean up screen barf
-# claculate and graph angles between leaflet planes
 
-#### fix lazy indexing on xyz coordinates!!!!!!!
-#### fix projection of spots on to leaflet plane rather than xy axis
 
 import sys
 import numpy as np
@@ -104,7 +101,8 @@ def read_pdb_get_Ps(pdbfile):
         if len(i) > 25:
             if i[17:19] =='PV' and i[13] == 'P':
                 bildout.write('.color {0} \n.sphere {1} 1.0\n'.format(coldic[i[17:21]],i[31:56]))
-                HGcoords.append([float(x) for x in i[31:56].split()])
+                #HGcoords.append([float(x) for x in i[31:56].split()])
+                HGcoords.append([float(i[31:38]),float(i[38:47]),float(i[47:55])])
             # get cAs for strands
             if i[:4] == 'ATOM': 
                 chain = i[21]
@@ -112,9 +110,11 @@ def read_pdb_get_Ps(pdbfile):
                 atomno = int(i[23:26])
                 if atomtype == 'CA':
                     try:
-                        cas[chain][atomno] = (i[31:56].split())
+                        #cas[chain][atomno] = (i[31:56].split())
+                        cas[chain][atomno] =[i[31:38],i[38:47],i[47:55]]
                     except:
-                        cas[chain] = {atomno:(i[31:56].split())}
+                        #cas[chain] = {atomno:(i[31:56].split())}
+                        cas[chain] = {atomno:([i[31:38],i[38:47],i[47:55]])}
     # plot the lipids in bildfiles
     xs = [float(x[0]) for x in HGcoords]
     ys = [float(x[1]) for x in HGcoords]
