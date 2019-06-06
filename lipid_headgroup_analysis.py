@@ -309,6 +309,13 @@ def read_pdb_get_Ps(pdbfile):
     # make a file to write data from 3D plotting
     pltout.write('\ntop\n{0}\n{1}\n{2}\n{3}'.format(' '.join([str(x) for x in bxs]),' '.join([str(x) for x in bys]),' '.join([str(x) for x in bzs]),' '.join([str(x) for x in bdistances])))
 
+    ## analyse planarity - this is no good because the leaflet is a hemisphereical donut not a flat plane
+    bsumdif = sum([abs(x) for x in bdistances])/len(bdistances)
+    tsumdif = sum([abs(x) for x in tdistances])/len(tdistances)
+    
+    print(bsumdif,tsumdif,'planarity - top - bottom')
+    
+##### main ######
 # make the necessary directories -- keep shit organised
 if os.path.isdir('top') == False:
     subprocess.call(['mkdir','top'])
