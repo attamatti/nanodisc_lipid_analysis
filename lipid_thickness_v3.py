@@ -7,9 +7,16 @@
 # top and bottom leaflets are switched relative to BAM, but this designation is arbirtary anyways
 
 ########  CAs to draw on the final map
-MSP_chains = ['F','G']
-barreldraw = {'barrel':['A',range(436,794)],'lateralgate':['A',[423,424,425,426,427,428,429,430,421,432,433,434,435,436,437,794,795,796,797,798,799,800,801,802,803,804,805,806,807,808,809,810]]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
-draworder = ['barrel', 'lateralgate']
+## for BAM
+#MSP_chains = ['F','G']
+#barreldraw = {'barrel':['A',range(436,794)],'lateralgate':['A',[423,424,425,426,427,428,429,430,421,432,433,434,435,436,437,794,795,796,797,798,799,800,801,802,803,804,805,806,807,808,809,810]]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
+#draworder = ['barrel', 'lateralgate']
+
+# for tOmpA
+MSP_chains = ['B','C']
+barreldraw = {'barrel':['A',range(0,170)]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
+draworder = ['barrel']
+
 #######
 
 
@@ -176,8 +183,9 @@ def fit_plane(initial,XYZ):
     
 # DO IT!
 def read_pdb_get_Ps(pdbfile):
+    filename = pdbfile.split('/')[-1].split('.')[0]
     filedata = open(pdbfile,'r').readlines()
-    bildout = open('bildfiles/HG_{0}.bild'.format(pdbfile.split('.')[0]),'w')
+    bildout = open('bildfiles/HG_{0}.bild'.format(filename),'w')
     coldic = {'PVPG':'red','PVCL':'yellow','PVPE':'blue'}
     HGcoords = []
     
@@ -439,7 +447,7 @@ def read_pdb_get_Ps(pdbfile):
         if ccount >1:
             ccount=0
     plt.title('thickness')
-    plt.savefig('thickness_plot.png')
+    plt.savefig('results/{0}_thickness_plot.png'.format(filename))
     plt.show()
     plt.close()
 
@@ -448,7 +456,8 @@ def read_pdb_get_Ps(pdbfile):
     print(startingplane)
     print(tabcd)
     print(babcd)
-    
+    subprocess.call(['mv','diag.bild','bildfiles/{0}_diag.bild'.format(filename)])
+
 ##### main ######
 # make the necessary directories -- keep shit organised
 if os.path.isdir('top') == False:
@@ -460,8 +469,8 @@ if os.path.isdir('bottom') == False:
 if os.path.isdir('bildfiles') == False:
     subprocess.call(['mkdir','bildfiles'])
 
-if os.path.isdir('plotdata') == False:
-    subprocess.call(['mkdir','plotdata'])
+if os.path.isdir('results') == False:
+    subprocess.call(['mkdir','results'])
 
 ### DO IT!!!
 for i in sys.argv[1:]:
