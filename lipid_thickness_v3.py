@@ -6,6 +6,12 @@
 
 # top and bottom leaflets are switched relative to BAM, but this designation is arbirtary anyways
 
+########  CAs to draw on the final map
+MSP_chains = ['F','G']
+barreldraw = {'barrel':['A',range(436,794)],'lateralgate':['A',[423,424,425,426,427,428,429,430,421,432,433,434,435,436,437,794,795,796,797,798,799,800,801,802,803,804,805,806,807,808,809,810]]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
+draworder = ['barrel', 'lateralgate']
+#######
+
 
 import sys
 import numpy as np
@@ -14,11 +20,34 @@ import matplotlib.pyplot as plt
 import os
 import subprocess
 
+diag = open('diag.bild','w')
+
 def distance(xy1,xy2):      # xy1 and xy2 = (x,y) 
     '''distance between two points in 2D'''
     distance = abs(xy1[0]-xy2[0])+abs(xy1[1]-xy2[1])
     return (distance)
 
+def find_nn(point,coords): # point = (x,y) coords = [[(x,y),dist],[(x,y),dist],[(x,y),dist]]
+    distdic = {}
+    for i in coords:
+        try:
+            distdic[distance(point,i[0])].append(i)
+        except:
+            distdic[distance(point,i[0])] = [i]
+    distances = distdic.keys()
+    distances.sort()
+    nns = []    
+    for i in distances:
+        for j in distdic[i]:
+            nns.append(j[1])
+        if len(nns) == 3:
+            break    
+    mh = np.mean([x for x in nns])
+    # print('point',point,mh)
+    # print('nns',nns)
+    # print('mean height', mh)
+    return(mh,point[0],point[1])
+    
 def find_nn_height(point,coords):       # point = (x,y) coords = [(x,y,z),(x,y,z),(x,y,z)]
     '''given a point on a grid determine the height of the leaflet there as mean of three nearest neighbor points'''
     distdic = {}
@@ -42,25 +71,52 @@ def find_nn_height(point,coords):       # point = (x,y) coords = [(x,y,z),(x,y,z
     print('mean height', mh)
     return(mh,point[0],point[1])
     
-def intersect_line_plabe(PNV,plane,point):
-    '''PNV = [i,j,k], plane = [a,b,c,d], point = [x,y,z]
-        ix = x - i(Ax+By+Cz+D)/Ai+Bj+Ck
-        iy = y - j(Ax+By+Cz+D)/Ai+Bj+Ck'''
-    print(PNV)
-    print(plane)
-    print(point)
-    ix = point[0] - PNV[0]*(plane[0]*point[0]+plane[1]*point[1]+plane[2]*point[2]+plane[3])/plane[0]*PNV[0]+plane[1]*PNV[1]+plane[2]*PNV[2]
-    iy = point[1] - PNV[1]*(plane[0]*point[0]+plane[1]*point[1]+plane[2]*point[2]+plane[3])/plane[0]*PNV[0]+plane[1]*PNV[1]+plane[2]*PNV[2]
-    print(ix,iy)
-    return((ix,iy))
+def iLP2(plane,point):
+    '''
+    project a point on to a plane
+    a(at+x)+b(bt+y)+c(ct+z)+d = 0
+    '''
+    a= plane[0]
+    b= plane[1]
+    c= plane[2]
+    d= plane[3]
+    x= point[0]
+    y= point[1]
+    z= point[2]
+    aat = a**2
+    ax = a*x
+    bbt = b**2
+    by = b*y
+    cct = c**2
+    cz = c*z
+    ttot = aat+bbt+cct
+    xyz = -1*(ax+by+cz+d)
+    t= xyz/ttot
+    print (point,'point')
+    print(plane,'plane')
+    print (t,'t')
+    xo = (a*t)+x
+    yo = (b*t)+y
+    zo = (c*t)+z
+    diag.write('.color green\n')
+    diag.write('.sphere {0} {1} {2} 0.5\n'.format(x,y,z))
+    diag.write('.color grey\n')
+    diag.write('.sphere {0} {1} {2} 0.5\n'.format(xo,yo,zo))
+    return(xo,yo,zo)
     
-def distance_to_plane(planeeq,point):
-    '''using abs(ax+by+cz+d)/sqrt(a^2+b^2+c^2)'''
-    
-    a,b,c,d = planeeq[0],planeeq[1],planeeq[2],planeeq[3]
-    ax,by,cz = point[0]*a,point[1]*b,point[2]*c
-    dist = abs(ax+by+cz+d)/np.sqrt(a**2+b**2+c**2)
-    return(dist)
+def get_distance_from_centreplane(point, CPX):
+    '''point = (x,y,z) CPX = (a,b,c,d)'''
+    # project the point on to the centreplane
+    cpp = iLP2(CPX,point)
+    diag.write('.arrow {0} {1} {2} {3} {4} {5} 0.2 0.6 \n'.format(point[0],point[1],point[2],cpp[0],cpp[1],cpp[2]))
+    dist_to_plane = abs(point[0]-cpp[0])+abs(point[1]-cpp[1])+abs(point[2]-cpp[2])
+    return([cpp[0],cpp[1]],dist_to_plane)
+
+def make_leaflet_grid(points):
+    '''points = ([x,y,dist],[x,y,dist])'''
+    xs = [x[0] for x in points]
+    ys = [x[1] for x in points]
+    dists = [x[2] for x in points]
 
 def plane_from_points(p1,p2,p3):
     '''returns ax+by+cy+d=0'''
@@ -71,7 +127,7 @@ def plane_from_points(p1,p2,p3):
     d = np.dot(cp, p3)
     
     print('{0}x + {1}y + {2}z = {3}'.format(a, b, c, d))
-    return(a,b,c,d)
+    return(a,b,c,-d)
 
 def fit_plane(initial,XYZ):
     '''returns plane normal vector and two parallel vectors'''
@@ -96,9 +152,9 @@ def fit_plane(initial,XYZ):
     print('{0}x + {1}y + {2}z = {3}'.format(a, b, c, d))
     
     ## calculate plane normal:
-    PNx = a/(np.sqrt(2**2+b**2+c**2))
-    PNy = b/(np.sqrt(2**2+b**2+c**2))
-    PNz = c/(np.sqrt(2**2+b**2+c**2))
+    PNx = a
+    PNy = b
+    PNz = c
     
     print ('plane normal',PNx,PNy,PNz)
 
@@ -110,10 +166,10 @@ def fit_plane(initial,XYZ):
     
     # get unit vector for plane vector
     scale = 100.0
-    e1mag = np.sqrt(e1[0]**2+e1[1]**2+e1[2]**2)
+    e1mag = np.sqrt((e1[0]**2)+(e1[1]**2)+(e1[2]**2))
     e1 = [(x/e1mag)*scale for x in e1]
 
-    e2mag = np.sqrt(e2[0]**2+e2[1]**2+e2[2]**2)
+    e2mag = np.sqrt((e2[0]**2)+(e2[1]**2)+(e2[2]**2))
     e2 = [(x/e2mag)*scale for x in e2]
 
     return([PNx,PNy,PNz],e1,e2,(a,b,c,d))
@@ -141,10 +197,8 @@ def read_pdb_get_Ps(pdbfile):
                 atomno = int(i[23:26])
                 if atomtype == 'CA':
                     try:
-                        #cas[chain][atomno] = (i[31:56].split())
                         cas[chain][atomno] =[i[31:38],i[38:47],i[47:55]]
                     except:
-                        #cas[chain] = {atomno:(i[31:56].split())}
                         cas[chain] = {atomno:([i[31:38],i[38:47],i[47:55]])}
     # plot the lipids in bildfiles
     xs = [float(x[0]) for x in HGcoords]
@@ -156,36 +210,30 @@ def read_pdb_get_Ps(pdbfile):
     bildout.write('.color blue \n.cylinder {0} {1} {2} {3} {4} {5} 0.5\n'.format(meanpoint[0],meanpoint[1],meanpoint[2],meanpoint[0],meanpoint[1]+20,meanpoint[2]))
     bildout.write('.color yellow  \n.cylinder {0} {1} {2} {3} {4} {5} 0.5\n'.format(meanpoint[0],meanpoint[1],meanpoint[2],meanpoint[0],meanpoint[1],meanpoint[2]+20))
     
-    #write the cas to the 3d plotting file
+    # get the MSP CAS for drawing:
     
-    ##### define the strands to draw here ################
-    strands = [             [range(1,171),'A']              ]
-    ######################################################
-    
-    strdic = {}             #{strandno:[[x,y,z],[x,y,z], ..., [x,y,z]]}
-    strcoords = {}
+    MSPCas = []         # just the x and y coords of all MSP CAs
+    otherdraw = {}
     for chain in cas:
-        for atom in cas[chain]:
-            strandn = 1    
-            for strand in strands:
-                if atom in strand[0] and chain == strand[1]:
-                    print(strandn,atom,cas[chain][atom])
-                    try:
-                    	strcoords[strandn].append(cas[chain][atom])
-                    except:
-                        strcoords[strandn] = [cas[chain][atom]]
-                strandn+=1
-    print strcoords
-    # write the strand data to the 3d plot file
-    pltout = open('plotdata/{0}_plot.txt'.format(pdbfile.split('.')[0]),'w')
-    for i in strcoords:
-        pltout.write('\nstrand {0}\n'.format(i))
-        for j in strcoords[i]:
-            pltout.write('{0} '.format(','.join(j)))
+        #print(chain)
+        if chain in MSP_chains:
+            for aa in cas[chain]:
+                print(chain)
+                print(aa)
+                MSPCas.append([float(x) for x in cas[chain][aa]])
+        else:
+            for i in barreldraw:
+                if chain == barreldraw[i][0]:
+                    for aa in cas[chain]:
+                        if aa in barreldraw[i][1]:
+                            try:
+                                otherdraw[i].append(cas[chain][aa])
+                            except:
+                                otherdraw[i]=[cas[chain][aa]]
 
-    
-    # inital guess at the starting plane three points are true mean and true mean +20x +20y and true mean -20x and -20y
-    # this is only vaild for matt's aligned BAM ND structures with Bam roughly aligned with the zaxis perpendicular to the Nanodisc
+       
+    ### inital guess at the starting plane three points are true mean and true mean +20x +20y and true mean -20x and -20y
+    ### optimized for matt's aligned BAM ND structures with BAM roughly aligned with the zaxis perpendicular to the Nanodisc
     
     startingplane = plane_from_points(np.array([meanpoint[0]+20,meanpoint[1]+20,meanpoint[2]]),np.array([meanpoint[0]-20,meanpoint[1]-20,meanpoint[2]]),np.array(meanpoint))
 
@@ -208,7 +256,11 @@ def read_pdb_get_Ps(pdbfile):
             bottom.append(i)
         else:
             ambig.append(i)
-            
+    
+    print(bottom)
+    
+    
+    # write the bild files       
     tbbild = open('bildfiles/TB_{0}.bild'.format(pdbfile.split('.')[0]),'w')
     tbbild.write('.color blue\n')
     for i in top:
@@ -219,14 +271,17 @@ def read_pdb_get_Ps(pdbfile):
     tbbild.write('.color red\n')
     for i in ambig:
         tbbild.write('.sphere {0} {1} {2} 1.0\n'.format(i[0],i[1],i[2]))
+
+   
+    
     
     # fit a plane to the bottom leaflet originall labelled top:
     txs = [float(x[0]) for x in top]
     tys = [float(x[1]) for x in top]
     tzs = [float(x[2]) for x in top]
     
-    # write bottomdata for 3d plotting
-
+    # # write bottomdata for plotting
+    # 
     meanpoint = [np.mean(txs),np.mean(tys),np.mean(tzs)]
     startingplane = plane_from_points(np.array(meanpoint),np.array(top[0]),np.array(top[1]))
     xyz = np.array([[x[0] for x in top],[x[1] for x in top],[x[2] for x in top]])
@@ -237,28 +292,6 @@ def read_pdb_get_Ps(pdbfile):
     tpp4 = [meanpoint[0]-te2[0],meanpoint[1]-te2[1],meanpoint[2]-te2[2]]
     tbbild.write('.polygon {0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11}\n'.format(tpp1[0],tpp1[1],tpp1[2],tpp2[0],tpp2[1],tpp2[2],tpp3[0],tpp3[1],tpp3[2],tpp4[0],tpp4[1],tpp4[2]))
     
-    # make plot for bottom leaflet originally labelled top:
-
-        
-    tpltxs,tpltys,tdistances = [],[],[]
-    # project points onto the plane and save for drawing
-    for i in top:
-        projxy = intersect_line_plabe(tPN,tabcd,i)
-        tpltxs.append(projxy[0])
-        tpltys.append(projxy[1])
-        dist = distance_to_plane(tabcd,i)
-        check = ((i[0]-tpp1[0])*tPN[0])+((i[1]-tpp1[1])*tPN[1])+((i[2]-tpp1[2])*tPN[2])
-        if check >= 0:
-            tdistances.append(dist)
-        if check < 0:
-            tdistances.append(-dist)
-    #normalize distance to 0-1 scale
-    distnormval = max([abs(x) for x in tdistances])
-    tdistances = [x/distnormval for x in tdistances]
-    
-    # get values for 3D plot 
-    pltout.write('\nbottom\n{0}\n{1}\n{2}\n{3}'.format(' '.join([str(x) for x in txs]),' '.join([str(x) for x in tys]),' '.join([str(x) for x in tzs]),' '.join([str(x) for x in tdistances])))
-
 # fit a plane to the top leaflet originally labelled bottom:
     bxs = [float(x[0]) for x in bottom]
     bys = [float(x[1]) for x in bottom]
@@ -273,111 +306,148 @@ def read_pdb_get_Ps(pdbfile):
     bpp4 = [meanpoint[0]-be2[0],meanpoint[1]-be2[1],meanpoint[2]-be2[2]]
     tbbild.write('.polygon {0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11}\n'.format(bpp1[0],bpp1[1],bpp1[2],bpp2[0],bpp2[1],bpp2[2],bpp3[0],bpp3[1],bpp3[2],bpp4[0],bpp4[1],bpp4[2]))
 
-    # make plot for top leaflet originally labelled bottom:
-    bpltxs,bpltys,bdistances = [],[],[]
-    for i in bottom:
-        projxy = intersect_line_plabe(bPN,babcd,i)
-        bpltxs.append(projxy[0])
-        bpltys.append(projxy[1])
-        dist = distance_to_plane(babcd,i)
-        check = ((i[0]-bpp1[0])*bPN[0])+((i[1]-bpp1[1])*bPN[1])+((i[2]-bpp1[2])*bPN[2])
-        if check >= 0:
-            bdistances.append(dist)
-        if check < 0:
-            bdistances.append(-dist)
-    distnormval = max([abs(x) for x in bdistances])
-    bdistances = [x/distnormval for x in bdistances]
+    # get new center plane from average of the two leaflet planes
+    newCP = [(tabcd[0]+babcd[0])/2,(tabcd[1]+babcd[1])/2,(tabcd[2]+babcd[2])/2,(tabcd[3]+babcd[3])/2]
     
+    # illustrate the new centre plane
+    a,b,c,d = (newCP[0],newCP[1],newCP[2],newCP[3])
+    e1 = [c-b,a-c,b-a]
+    e2 = [a*(b+c)-b**2-c**2,   b*(a+c)-a**2-c**2,   c*(a+b)-a**2-b**2]
+    print ('e1',e1)
+    print ('e2',e2)
+    scale = 100.0
     
-    # calculat the xy limits
-    tcent = (np.mean(tpltxs),np.mean(tpltys))
-    
-    txmin,txmax = min(tpltxs),max(tpltxs)
-    txrange = max([abs(tcent[0]-txmin),abs(tcent[0]-txmax)])
-    txrmin,txrmax = tcent[0]-txrange-20,tcent[0]+txrange+20
-    txr = txrmax - txrmin
-    
-    tymin,tymax = min(tpltys),max(tpltys)
-    tyrange = max([abs(tcent[1]-tymin),abs(tcent[1]-tymax)])
-    tyrmin,tyrmax = tcent[1]-tyrange-20,tcent[1]+tyrange+20
-    tyr =  tyrmax - tyrmin
-    
-    bcent = (np.mean(bpltxs),np.mean(bpltys))
-    
-    bxmin,bxmax = min(bpltxs),max(bpltxs)
-    bxrange = max([abs(bcent[0]-bxmin),abs(bcent[0]-bxmax)])
-    bxrmin,bxrmax = bcent[0]-bxrange-20,bcent[0]+bxrange+20
-    bxr = bxrmax - bxrmin
-    
-    bymin,bymax = min(bpltys),max(bpltys)
-    byrange = max([abs(bcent[1]-bymin),abs(bcent[1]-bymax)])
-    byrmin,byrmax = bcent[1]-byrange-20,bcent[1]+byrange+20
-    byr =  byrmax - byrmin  
-    
-    xr = 0.5*max([txr,bxr])
-    yr = 0.5*max([tyr,byr])
-        
-    # plot the top (called bottom)
-    plt.xlim(bcent[0]-xr,bcent[0]+xr)
-    plt.ylim(bcent[1]-yr,bcent[1]+yr)
-    plt.title('top_{0}'.format(pdbfile.split('.')[0]))
-    plt.scatter(bpltxs,bpltys,c=bdistances,cmap='coolwarm')
-    plt.savefig('top/top_{0}.png'.format(pdbfile.split('.')[0]))
-    plt.axis('off')
-    plt.close()
-    
-    # plot the bottom (called top - top and bottom are arbitrary anyway!)
-    plt.xlim(tcent[0]-xr,tcent[0]+xr)
-    plt.ylim(tcent[1]-yr,tcent[1]+yr)
-    plt.title('bottom_{0}'.format(pdbfile.split('.')[0]))
-    plt.scatter(tpltxs,tpltys,c=tdistances,cmap='coolwarm')
-    plt.savefig('bottom/bottom_{0}.png'.format(pdbfile.split('.')[0]))
-    plt.axis('off')
-    plt.close()
+    # normalize magnitudes to make a square
+    e1mag = np.sqrt(e1[0]**2+e1[1]**2+e1[2]**2)
+    e1 = [(x/e1mag)*scale for x in e1]
 
-    bildout.close()
+    e2mag = np.sqrt(e2[0]**2+e2[1]**2+e2[2]**2)
+    e2 = [(x/e2mag)*scale for x in e2]
     
-    # make a file to write data from 3D plotting
-    pltout.write('\ntop\n{0}\n{1}\n{2}\n{3}'.format(' '.join([str(x) for x in bxs]),' '.join([str(x) for x in bys]),' '.join([str(x) for x in bzs]),' '.join([str(x) for x in bdistances])))
-
-    ## analyse planarity - this is no good because the leaflet is a hemisphereical donut not a flat plane
-    bsumdif = sum([abs(x) for x in bdistances])/len(bdistances)
-    tsumdif = sum([abs(x) for x in tdistances])/len(tdistances)
+    meanpoint = [np.mean(bxs+txs),np.mean(bys+tys),np.mean(bzs+tzs)]
+    bpp1 = [meanpoint[0]+e1[0],meanpoint[1]+e1[1],meanpoint[2]+e1[2]]
+    bpp3 = [meanpoint[0]-e1[0],meanpoint[1]-e1[1],meanpoint[2]-e1[2]]
+    bpp2 = [meanpoint[0]+e2[0],meanpoint[1]+e2[1],meanpoint[2]+e2[2]]
+    bpp4 = [meanpoint[0]-e2[0],meanpoint[1]-e2[1],meanpoint[2]-e2[2]]
     
-    print(bsumdif,tsumdif,'planarity - top - bottom')
+    tbbild.write('.color yellow\n')
+    tbbild.write('.polygon {0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11}\n'.format(bpp1[0],bpp1[1],bpp1[2],bpp2[0],bpp2[1],bpp2[2],bpp3[0],bpp3[1],bpp3[2],bpp4[0],bpp4[1],bpp4[2]))
+    tbbild.write('.color red\n')
+    # get the distances to the  new centre plane for each headgroup
     
-    # plot a surface representation
+    newCP = plane_from_points(np.array(bpp1),np.array(bpp2),np.array(bpp3)) 
+    pbottom = [get_distance_from_centreplane(x,newCP) for x in bottom]
+    ptop = [get_distance_from_centreplane(x,newCP) for x in top] 
     
-    print('bottom lipid coords')
-    tlc = (zip(tpltxs,tpltys,tdistances))
-    print ('top lipid coords')
-    blc = (zip(bpltxs,bpltys,bdistances))
-    print(blc)
+    # project the MSP CAs onto the center plane 
+    MSPs = [iLP2(newCP,x) for x in MSPCas]
+    MSPx =[x[0] for x in MSPs]
+    MSPy =[x[1] for x in MSPs] 
     
-    testx,testy,testz = [],[],[] 
+    # do the same projectiosn for the barrel portions to be plotted
+    bos = {}        #{name:[[x,y,z],[x,y,z]], name2:[[x,y,z],[x,y,z]]}
+    for i in draworder:
+        bos[i] = []
+        for j in otherdraw[i]:
+            bos[i].append(iLP2(newCP,[float(x) for x in j]))
+    
+    txs = [x[0][0] for x in ptop]
+    tys = [x[0][1] for x in ptop]
+    tds = [x[1] for x in ptop]
+    bxs = [x[0][0] for x in pbottom]
+    bys = [x[0][1] for x in pbottom]
+    bds = [x[1] for x in pbottom]
     
     # make a square around the bilayer
-    xrange = (abs(min(tpltxs)-max(tpltxs)))
-    yrange = (abs(min(tpltys)-max(tpltys)))
-    meanx = np.mean([min(tpltxs),max(tpltxs)])
-    meany = np.mean([min(tpltys),max(tpltys)])
-    therange = 0.5*max([xrange,yrange])+10
+    txrange = (abs(min(txs)-max(txs)))
+    tyrange = (abs(min(tys)-max(tys)))
+    meantx = np.mean([min(txs),max(txs)])
+    meanty = np.mean([min(tys),max(tys)])
+    bxrange = (abs(min(bxs)-max(bxs)))
+    byrange = (abs(min(bys)-max(bys)))
+    meanbx = np.mean([min(bxs),max(bxs)])
+    meanby = np.mean([min(bys),max(bys)])
+    txcent = np.mean(txs)
+    tycent = np.mean(tys)
+    bxcent = np.mean(bxs)
+    bycent = np.mean(bys)
+    therange = 0.5*max([txrange,tyrange,bxrange,byrange])+10
     
-    # make the grid in the square
-    tgridx = np.arange(meanx-therange,meanx+therange,1)
-    tgridy = np.arange(meany-therange,meany+therange,1)     
+    # graph the top
+    
+    print ((txcent-therange)-(txcent+therange))
+    print((tycent-therange)-(tycent+therange))
+    plt.xlim = (txcent-therange,txcent+therange)
+    plt.ylim = (tycent-therange,tycent+therange)
+    plt.gca().set_aspect('equal', adjustable='datalim')
+    plt.scatter(txs,tys,c=tds)
+    #plt.show()
+    plt.savefig('1.png')
+    
+    # graph thebottom
+    
+    print ((bxcent-therange)-(bxcent+therange))
+    print((bycent-therange)-(bycent+therange))
+    plt.xlim = (bxcent-therange,bxcent+therange)
+    plt.ylim = (bycent-therange,bycent+therange)
+    plt.gca().set_aspect('equal', adjustable='datalim')
+    plt.scatter(bxs,bys,c=bds)
+    #plt.show()
+    plt.savefig('2.png')
+    print(therange)
+    # make the two surfaces
+    
+    # make the grid in the square - bottom (labelled top)
+    tgridx = np.arange(txcent-therange,txcent+therange,1)
+    tgridy = np.arange(tycent-therange,tycent+therange,1)     
     xx, yy = np.meshgrid(tgridx, tgridy)
-    # put the height values on teh grid
-    z = [find_nn_height((x[0],x[1]),tlc)[0] for x in zip(list(xx.flat),list(yy.flat))]
     
-    # remove datapoints that are outside the nanodisc
-    
-    
+    z = [find_nn((x[0],x[1]),ptop)[0] for x in zip(list(xx.flat),list(yy.flat))]
     z=np.array(z)
     z = np.reshape(z,xx.shape)
     h = plt.contourf(tgridx,tgridy,z)
-    #plt.scatter(tpltxs,tpltys,c=tdistances, edgecolors='k')
+    plt.title('bottom')
+    plt.savefig('bottom_plot.png')    
+    
+    # then bottom
+    bz = [find_nn((x[0],x[1]),pbottom)[0] for x in zip(list(xx.flat),list(yy.flat))]
+    bz=np.array(bz)
+    bz = np.reshape(bz,xx.shape)
+    h = plt.contourf(tgridx,tgridy,bz)
+    plt.title('top')
+    plt.savefig('top_plot.png')   
+    thickness = z+bz
+    h = plt.contourf(tgridx,tgridy,thickness)
+    plt.colorbar(h)
+    
+    ##plot the MSPs
+    plt.scatter(MSPx,MSPy,c='k')
+    
+    ## plot the other barrel components
+    markers = ('v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd')
+    colors = ['k','w']
+    mcount = 0
+    ccount = 0
+    for i in bos:
+        bosx = [x[0] for x in bos[i]]
+        bosy = [x[1] for x in bos[i]]
+        plt.scatter(bosx,bosy,marker=markers[mcount],c=colors[ccount],edgecolors='k')
+        mcount+=1
+        ccount +=1
+        if mcount > len(markers)-1:
+            mcount=0
+        if ccount >1:
+            ccount=0
+    plt.title('thickness')
+    plt.savefig('thickness_plot.png')
     plt.show()
+    plt.close()
+
+    print(newCP)
+    print(plane_from_points(np.array(bpp1),np.array(bpp2),np.array(bpp3)))
+    print(startingplane)
+    print(tabcd)
+    print(babcd)
     
 ##### main ######
 # make the necessary directories -- keep shit organised
