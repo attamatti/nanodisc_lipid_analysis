@@ -2,20 +2,20 @@
 
 # to do:
 # clean up screen barf
-# project barrel and MSP CAs to draw outlines of BB and nanodisc
+# make all plots have normalized color values
 
 # top and bottom leaflets are switched relative to BAM, but this designation is arbirtary anyways
 
 ########  CAs to draw on the final map
 ## for BAM
-#MSP_chains = ['F','G']
-#barreldraw = {'barrel':['A',range(436,794)],'lateralgate':['A',[423,424,425,426,427,428,429,430,421,432,433,434,435,436,437,794,795,796,797,798,799,800,801,802,803,804,805,806,807,808,809,810]]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
-#draworder = ['barrel', 'lateralgate']
+MSP_chains = ['F','G']
+barreldraw = {'barrel':['A',range(436,794)],'lateralgate':['A',[423,424,425,426,427,428,429,430,421,432,433,434,435,436,437,794,795,796,797,798,799,800,801,802,803,804,805,806,807,808,809,810]]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
+draworder = ['barrel', 'lateralgate']
 
-# for tOmpA
-MSP_chains = ['B','C']
-barreldraw = {'barrel':['A',range(0,170)]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
-draworder = ['barrel']
+####for tOmpA
+#MSP_chains = ['B','C']
+#barreldraw = {'barrel':['A',range(0,170)]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
+#draworder = ['barrel']
 
 #######
 
@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 import os
 import subprocess
 
-diag = open('diag.bild','w')
+
 
 def distance(xy1,xy2):      # xy1 and xy2 = (x,y) 
     '''distance between two points in 2D'''
@@ -156,7 +156,7 @@ def fit_plane(initial,XYZ):
     print("New Error: ", (f_min(XYZ, sol)**2).sum())
 
     a,b,c,d = sol[0],sol[1],sol[2],sol[3]    
-    print('{0}x + {1}y + {2}z = {3}'.format(a, b, c, d))
+    print('{0}x + {1}y + {2}z + {3} = 0'.format(a, b, c, d))
     
     ## calculate plane normal:
     PNx = a
@@ -379,8 +379,9 @@ def read_pdb_get_Ps(pdbfile):
     tycent = np.mean(tys)
     bxcent = np.mean(bxs)
     bycent = np.mean(bys)
-    therange = 0.5*max([txrange,tyrange,bxrange,byrange])+10
-    
+    #therange = 0.5*max([txrange,tyrange,bxrange,byrange])+10
+    #switched the range toa fixed value so the different frames can be compared
+    therange = 75
     # graph the top
     
     print ((txcent-therange)-(txcent+therange))
@@ -425,8 +426,8 @@ def read_pdb_get_Ps(pdbfile):
     plt.title('top')
     plt.savefig('top_plot.png')   
     thickness = z+bz
-    h = plt.contourf(tgridx,tgridy,thickness)
-    plt.colorbar(h)
+    h = plt.contourf(tgridx,tgridy,thickness,vmin=20,vmax=75,cmap='coolwarm')
+    cbar = plt.colorbar(h)
     
     ##plot the MSPs
     plt.scatter(MSPx,MSPy,c='k')
@@ -436,6 +437,7 @@ def read_pdb_get_Ps(pdbfile):
     colors = ['k','w']
     mcount = 0
     ccount = 0
+    boses = []
     for i in bos:
         bosx = [x[0] for x in bos[i]]
         bosy = [x[1] for x in bos[i]]
@@ -446,9 +448,10 @@ def read_pdb_get_Ps(pdbfile):
             mcount=0
         if ccount >1:
             ccount=0
-    plt.title('thickness')
+        boses.append((bosx,bosy))
+    plt.title('thickness {0}'.format(filename))
     plt.savefig('results/{0}_thickness_plot.png'.format(filename))
-    plt.show()
+    #plt.show()
     plt.close()
 
     print(newCP)
@@ -457,7 +460,7 @@ def read_pdb_get_Ps(pdbfile):
     print(tabcd)
     print(babcd)
     subprocess.call(['mv','diag.bild','bildfiles/{0}_diag.bild'.format(filename)])
-
+    return(thickness,MSPx,MSPy,boses)
 ##### main ######
 # make the necessary directories -- keep shit organised
 if os.path.isdir('top') == False:
@@ -473,5 +476,78 @@ if os.path.isdir('results') == False:
     subprocess.call(['mkdir','results'])
 
 ### DO IT!!!
+final_data = []
+final_MSPx,final_MSPy = [],[]
+final_drawx,final_drawy = [],[]
 for i in sys.argv[1:]:
-    read_pdb_get_Ps(i)
+    diag = open('diag.bild','w')
+    thick,MSPx,MSPy,boses =  read_pdb_get_Ps(i)
+    final_data.append(thick)
+    for i in boses:
+        final_drawx.append(np.asarray(i[0]))
+        final_drawy.append(np.asarray(i[1]))
+    final_MSPx.append(np.asarray(MSPx))
+    final_MSPy.append(np.asarray(MSPy))
+    diag.close()
+
+thickness_mean = np.mean(final_data, axis=0)
+thickness_std =  np.std(final_data, axis=0)
+drawMSPx = np.mean(final_MSPx,axis=0)
+drawMSPy = np.mean(final_MSPy,axis=0)
+num_extra_elements = len(final_drawx)/len(final_data)
+print(num_extra_elements)
+
+
+draw_elementsx,draw_elementsy = [],[]
+for i in range(0,num_extra_elements):
+    draw_elementsx.append(np.mean(final_drawx[i::num_extra_elements],axis=0))
+    draw_elementsy.append(np.mean(final_drawy[i::num_extra_elements],axis=0))
+
+## make the summary plots
+xcent = np.mean(drawMSPx)
+ycent = np.mean(drawMSPy)
+gridx = np.arange(xcent-75,xcent+75,1)
+gridy = np.arange(ycent-75,ycent+75,1)
+
+# draw the thickness plot
+h = plt.contourf(gridx,gridy,thickness_mean,vmin=np.min(thickness_mean),vmax=np.max(thickness_mean),cmap='coolwarm')
+plt.colorbar(h)
+plt.scatter(drawMSPx,drawMSPy,c='K')
+markers = ('v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd')
+colors = ['k','w']
+mcount = 0
+ccount = 0
+print('****')
+print (draw_elementsx)
+for i in range(num_extra_elements):
+    plt.scatter(draw_elementsx[i],draw_elementsy[i],marker=markers[mcount],c=colors[ccount],edgecolors='k')
+    mcount+=1
+    ccount +=1
+    if mcount > len(markers)-1:
+        mcount=0
+    if ccount >1:
+        ccount=0
+plt.savefig('mean_thickness.png')
+plt.show()
+plt.close()
+
+# draw the STD plot
+h = plt.contourf(gridx,gridy,thickness_std,vmin=np.min(thickness_std),vmax=np.max(thickness_std),cmap='YlOrRd')
+plt.colorbar(h)
+plt.scatter(drawMSPx,drawMSPy,c='K')
+markers = ('v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd')
+colors = ['k','w']
+mcount = 0
+ccount = 0
+for i in range(num_extra_elements):
+    plt.scatter(draw_elementsx[i],draw_elementsy[i],marker=markers[mcount],c=colors[ccount],edgecolors='k')
+    mcount+=1
+    ccount +=1
+    if mcount > len(markers)-1:
+        mcount=0
+    if ccount >1:
+        ccount=0
+plt.scatter(drawMSPx,drawMSPy,c='K')
+plt.savefig('std_thickness.png')
+plt.show()
+plt.close()
