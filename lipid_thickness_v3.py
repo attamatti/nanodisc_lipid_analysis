@@ -2,22 +2,31 @@
 
 # to do:
 # clean up screen barf
-# make all plots have normalized color values
+# make all plots have normalized color values - has a workaround in right now
+# need to write out grid data to file then write script to parse all of the output files
+# and redraw plots
 
 # top and bottom leaflets are switched relative to BAM, but this designation is arbirtary anyways
 
-########  CAs to draw on the final map
+#########  CAs to draw on the final map  ############
 ## for BAM
-MSP_chains = ['F','G']
-barreldraw = {'barrel':['A',range(436,794)],'lateralgate':['A',[423,424,425,426,427,428,429,430,421,432,433,434,435,436,437,794,795,796,797,798,799,800,801,802,803,804,805,806,807,808,809,810]]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
-draworder = ['barrel', 'lateralgate']
+#MSP_chains = ['F','G']
+#barreldraw = {'barrel':['A',range(436,794)],'lateralgate':['A',[423,424,425,426,427,428,429,430,421,432,433,434,435,436,437,794,795,796,797,798,799,800,801,802,803,804,805,806,807,808,809,810]]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
+#draworder = ['barrel', 'lateralgate']
 
-####for tOmpA
+###for tOmpA
 #MSP_chains = ['B','C']
 #barreldraw = {'barrel':['A',range(0,170)]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
 #draworder = ['barrel']
 
-#######
+
+###for tOmpA simulationframes
+MSP_chains = ['X']
+barreldraw = {'barrel':['X',range(0,171)]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
+draworder = ['barrel']
+
+
+#####################################################
 
 
 import sys
@@ -229,15 +238,14 @@ def read_pdb_get_Ps(pdbfile):
                 print(chain)
                 print(aa)
                 MSPCas.append([float(x) for x in cas[chain][aa]])
-        else:
-            for i in barreldraw:
-                if chain == barreldraw[i][0]:
-                    for aa in cas[chain]:
-                        if aa in barreldraw[i][1]:
-                            try:
-                                otherdraw[i].append(cas[chain][aa])
-                            except:
-                                otherdraw[i]=[cas[chain][aa]]
+        for i in barreldraw:
+            if chain == barreldraw[i][0]:
+                for aa in cas[chain]:
+                    if aa in barreldraw[i][1]:
+                        try:
+                            otherdraw[i].append(cas[chain][aa])
+                        except:
+                            otherdraw[i]=[cas[chain][aa]]
 
        
     ### inital guess at the starting plane three points are true mean and true mean +20x +20y and true mean -20x and -20y
@@ -509,10 +517,14 @@ ycent = np.mean(drawMSPy)
 gridx = np.arange(xcent-75,xcent+75,1)
 gridy = np.arange(ycent-75,ycent+75,1)
 
+
+
 # draw the thickness plot
 h = plt.contourf(gridx,gridy,thickness_mean,vmin=np.min(thickness_mean),vmax=np.max(thickness_mean),cmap='coolwarm')
 plt.colorbar(h)
 plt.scatter(drawMSPx,drawMSPy,c='K')
+np.savetxt('msps_x_{0}.txt'.format(i),drawMSPx,header='#o/k')
+np.savetxt('msps_y_{0}.txt'.format(i),drawMSPy,header='#o/k')
 markers = ('v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd')
 colors = ['k','w']
 mcount = 0
@@ -521,18 +533,24 @@ print('****')
 print (draw_elementsx)
 for i in range(num_extra_elements):
     plt.scatter(draw_elementsx[i],draw_elementsy[i],marker=markers[mcount],c=colors[ccount],edgecolors='k')
+    np.savetxt('elems_x_{0}.txt'.format(i),draw_elementsx[i],header='{0}/{1}'.format(markers[mcount],colors[ccount]))
+    np.savetxt('elems_y_{0}.txt'.format(i),draw_elementsy[i],header='{0}/{1}'.format(markers[mcount],colors[ccount]))
+
     mcount+=1
     ccount +=1
     if mcount > len(markers)-1:
         mcount=0
     if ccount >1:
         ccount=0
+    
 plt.savefig('mean_thickness.png')
 plt.show()
 plt.close()
 
 # draw the STD plot
 h = plt.contourf(gridx,gridy,thickness_std,vmin=np.min(thickness_std),vmax=np.max(thickness_std),cmap='YlOrRd')
+#### fake out line for color normalization
+#h = plt.contourf(gridx,gridy,thickness_std,vmin=2.0,vmax=8.0,cmap='YlOrRd')
 plt.colorbar(h)
 plt.scatter(drawMSPx,drawMSPy,c='K')
 markers = ('v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd')
@@ -551,3 +569,4 @@ plt.scatter(drawMSPx,drawMSPy,c='K')
 plt.savefig('std_thickness.png')
 plt.show()
 plt.close()
+
