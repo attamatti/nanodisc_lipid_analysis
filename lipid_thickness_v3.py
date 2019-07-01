@@ -9,21 +9,21 @@
 # top and bottom leaflets are switched relative to BAM, but this designation is arbirtary anyways
 
 #########  CAs to draw on the final map  ############
-## for BAM
-#MSP_chains = ['F','G']
-#barreldraw = {'barrel':['A',range(436,794)],'lateralgate':['A',[423,424,425,426,427,428,429,430,421,432,433,434,435,436,437,794,795,796,797,798,799,800,801,802,803,804,805,806,807,808,809,810]]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
-#draworder = ['barrel', 'lateralgate']
+# for BAM
+MSP_chains = ['F','G']
+barreldraw = {'barrel':['A',range(436,794)],'lateralgate':['A',[423,424,425,426,427,428,429,430,421,432,433,434,435,436,437,794,795,796,797,798,799,800,801,802,803,804,805,806,807,808,809,810]]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
+draworder = ['barrel', 'lateralgate']
 
 ###for tOmpA
 #MSP_chains = ['B','C']
 #barreldraw = {'barrel':['A',range(0,170)]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
 #draworder = ['barrel']
 
-
-###for tOmpA simulationframes
-MSP_chains = ['X']
-barreldraw = {'barrel':['X',range(0,171)]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
-draworder = ['barrel']
+#
+####for tOmpA simulationframes
+#MSP_chains = ['X']
+#barreldraw = {'barrel':['X',range(0,171)]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
+#draworder = ['barrel']
 
 
 #####################################################
@@ -483,6 +483,9 @@ if os.path.isdir('bildfiles') == False:
 if os.path.isdir('results') == False:
     subprocess.call(['mkdir','results'])
 
+if os.path.isdir('plotfiles') == False:
+    subprocess.call(['mkdir','plotfiles'])
+
 ### DO IT!!!
 final_data = []
 final_MSPx,final_MSPy = [],[]
@@ -517,14 +520,20 @@ ycent = np.mean(drawMSPy)
 gridx = np.arange(xcent-75,xcent+75,1)
 gridy = np.arange(ycent-75,ycent+75,1)
 
-
+print(thickness_mean.shape)
 
 # draw the thickness plot
-h = plt.contourf(gridx,gridy,thickness_mean,vmin=np.min(thickness_mean),vmax=np.max(thickness_mean),cmap='coolwarm')
+h = plt.contourf(gridx,gridy,thickness_mean,np.arange(20,60,2),vmin=np.min(thickness_mean),vmax=np.max(thickness_mean),cmap='coolwarm',)
+thickness_mean.tofile('plotfiles/thickness.npy')
+gridx.tofile('plotfiles/gridx.npy')
+gridy.tofile('plotfiles/gridy.npy')
 plt.colorbar(h)
 plt.scatter(drawMSPx,drawMSPy,c='K')
-np.savetxt('msps_x_{0}.txt'.format(i),drawMSPx,header='#o/k')
-np.savetxt('msps_y_{0}.txt'.format(i),drawMSPy,header='#o/k')
+drawMSPx.tofile('plotfiles/msps_x.npy')
+drawMSPy.tofile('plotfiles/msps_y.npy')
+print('**************')
+print(drawMSPx)
+print(drawMSPy)
 markers = ('v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd')
 colors = ['k','w']
 mcount = 0
@@ -533,8 +542,8 @@ print('****')
 print (draw_elementsx)
 for i in range(num_extra_elements):
     plt.scatter(draw_elementsx[i],draw_elementsy[i],marker=markers[mcount],c=colors[ccount],edgecolors='k')
-    np.savetxt('elems_x_{0}.txt'.format(i),draw_elementsx[i],header='{0}/{1}'.format(markers[mcount],colors[ccount]))
-    np.savetxt('elems_y_{0}.txt'.format(i),draw_elementsy[i],header='{0}/{1}'.format(markers[mcount],colors[ccount]))
+    np.asarray(draw_elementsx[i]).tofile('plotfiles/elems_x_{0}.npy'.format(i))
+    np.asarray(draw_elementsy[i]).tofile('plotfiles/elems_y_{0}.npy'.format(i))
 
     mcount+=1
     ccount +=1
@@ -549,6 +558,7 @@ plt.close()
 
 # draw the STD plot
 h = plt.contourf(gridx,gridy,thickness_std,vmin=np.min(thickness_std),vmax=np.max(thickness_std),cmap='YlOrRd')
+thickness_std.tofile('plotfiles/STD.npy')
 #### fake out line for color normalization
 #h = plt.contourf(gridx,gridy,thickness_std,vmin=2.0,vmax=8.0,cmap='YlOrRd')
 plt.colorbar(h)
