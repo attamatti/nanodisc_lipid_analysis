@@ -39,12 +39,12 @@ try:
 except:
     sys.exit('ERROR READING FILES!! - they should be in a directoty called plotfiles/ \nUSAGE: replot_thickness_data.py <thickness min> <thickness max> <thickness increment> <std min> <std max> <std increment> ')
 try:
-    thmin = int(sys.argv[1])
-    thmax = int(sys.argv[2])
-    thinc = int(sys.argv[3])
-    stdmin = int(sys.argv[4])
-    stdmax = int(sys.argv[5])
-    stdinc = int(sys.argv[6])
+    thmin = float(sys.argv[1])
+    thmax = float(sys.argv[2])
+    thinc = float(sys.argv[3])
+    stdmin = float(sys.argv[4])
+    stdmax = float(sys.argv[5])
+    stdinc = float(sys.argv[6])
 
 except:
     sys.exit('''\nUSAGE: replot_thickness_data.py <thickness min> <thickness max> <thickness increment> <std min> <std max> <std increment>
