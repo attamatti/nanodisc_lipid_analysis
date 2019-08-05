@@ -210,9 +210,9 @@ def read_pdb_get_Ps(pdbfile):
             # get cAs for strands
             if i[:4] == 'ATOM': 
                 chain = i[21]
-                atomtype = i[13:15]
+                atomtype = i[13:16]
                 atomno = int(i[23:26])
-                if atomtype == 'CA':
+                if atomtype == 'CA ':
                     try:
                         cas[chain][atomno] =[i[31:38],i[38:47],i[47:55]]
                     except:
