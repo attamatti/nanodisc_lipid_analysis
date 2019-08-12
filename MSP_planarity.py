@@ -194,14 +194,18 @@ for i in sys.argv[1:]:
     fys2.append(ys2)
     fd1.append(dist1)
     fd2.append(dist2)
-xzip1 = zip(*fxs1)
-yzip1 = zip(*fys1)
+
 dzip1 = zip(*fd1)
 
+dzip2 = zip(*fd2)
 
-meansx1 = [np.mean(x) for x in xzip1]
-meansy1 = [np.mean(x) for x in yzip1]
-sumd1 = [sum(x) for x in dzip1]
+sumd1 = np.asarray([sum(x) for x in dzip1])
+sumd2 = np.asarray([sum(x) for x in dzip2])
+std1 = np.asarray([np.std(x) for x in dzip1])
+std2 = np.asarray([np.std(x) for x in dzip2])
 
-plt.scatter(meansx1,meansy1,c=sumd1)
-plt.show()
+sumd1.tofile('plotfiles/msp1_plan.npy')
+sumd2.tofile('plotfiles/msp2_plan.npy')
+
+std1.tofile('plotfiles/stdmsp1_plan.npy')
+std2.tofile('plotfiles/stdmsp2_plan.npy')
