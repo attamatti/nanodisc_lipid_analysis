@@ -11,8 +11,8 @@ import glob
 
 MSPxs = np.fromfile('plotfiles/msps_x.npy')
 MSPys = np.fromfile('plotfiles/msps_y.npy')
-msp1vals= np.fromfile('plotfiles/msp1_plan.npy')
-msp2vals= np.fromfile('plotfiles/msp2_plan.npy')
+msp1vals= np.log(np.fromfile('plotfiles/msp1_plan.npy'))
+msp2vals= np.log(np.fromfile('plotfiles/msp2_plan.npy'))
 msp1std= np.fromfile('plotfiles/stdmsp1_plan.npy')
 msp2std= np.fromfile('plotfiles/stdmsp2_plan.npy')
 #except:

@@ -7,8 +7,8 @@ import scipy
 import matplotlib.pyplot as plt
 
 
-MSP1_chain = 'F'
-MSP2_chain = 'G'
+MSP1_chain = 'A'
+MSP2_chain = 'B'
 def iLP2(plane,point):
     '''
     project a point on to a plane

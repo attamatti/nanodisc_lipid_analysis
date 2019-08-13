@@ -9,21 +9,23 @@
 # top and bottom leaflets are switched relative to BAM, but this designation is arbirtary anyways
 
 #########  CAs to draw on the final map  ############
-# for BAM
-MSP_chains = ['F','G']
-barreldraw = {'barrel':['A',range(436,794)],'lateralgate':['A',[423,424,425,426,427,428,429,430,421,432,433,434,435,436,437,794,795,796,797,798,799,800,801,802,803,804,805,806,807,808,809,810]]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
-draworder = ['barrel', 'lateralgate']
+## for BAM
+#MSP_chains = ['B','C']
+#barreldraw = {'barrel':['A',range(436,794)],'lateralgate':['A',[423,424,425,426,427,428,429,430,421,432,433,434,435,436,437,794,795,796,797,798,799,800,801,802,803,804,805,806,807,808,809,810]]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
+#draworder = ['barrel', 'lateralgate']
 
-###for tOmpA
+##for tOmpA
 #MSP_chains = ['B','C']
 #barreldraw = {'barrel':['A',range(0,170)]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
 #draworder = ['barrel']
 
 #
-####for tOmpA simulationframes
-#MSP_chains = ['X']
-#barreldraw = {'barrel':['X',range(0,171)]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
-#draworder = ['barrel']
+####for empty nanodisc simulationframes
+MSP_chains = ['A','B']
+barreldraw = {'barrel':['B',range(60,61)]}            # {Name1:[Chain[AAs]],Name2:[Chain2,[AAs2]]}
+draworder = ['barrel']
+
+
 
 
 #####################################################
